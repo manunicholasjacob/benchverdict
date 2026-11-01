@@ -1,0 +1,15 @@
+# Normalise every text file to LF in the repository. This matters beyond tidiness:
+# action.yml and .github/workflows/ci.yml carry bash scripts with heredocs, and a
+# CRLF line ending inside one of those breaks the script on a Linux runner.
+* text=auto eol=lf
+
+# Never touch these, whatever a local core.autocrlf says.
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.cff text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+LICENSE text eol=lf
