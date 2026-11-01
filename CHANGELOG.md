@@ -19,9 +19,10 @@ named there may change.
   `InvalidMeasurement` rather than letting a contaminated number pass.
 - `guarded()` decorator, the same behaviour wrapped around a function, with the
   most recent `Guard` left on the function as a `benchguard` attribute.
-- `check()` point-in-time read that judges machine configuration alone and
-  returns PASS, INVALID or UNSUPPORTED, never UNKNOWN, because it makes no
-  claim about an interval.
+- `check()` point-in-time read that judges machine configuration alone. It
+  never returns UNKNOWN for a short duration, because it makes no claim about
+  an interval, but it does return UNKNOWN when not one state source could be
+  read.
 - The `measurement-provenance/1` JSON envelope: a documented outer contract
   carrying the verdict, the reason list, the platform block, the measured
   duration and the list of sources that could not be read, with every
@@ -63,6 +64,12 @@ named there may change.
   UNKNOWN with `SHORT_DURATION` instead of a confident PASS, and unreadable
   state sources yield `SOURCES_UNREADABLE` so that silence is never read as
   evidence of a clean machine.
+- Blind-run handling: when not one state source was readable on a platform that
+  reports itself as Linux, the verdict is UNKNOWN with `NO_SOURCES` rather than
+  PASS, because no evidence of a problem is not evidence of no problem.
+- `jsonschema` in the `dev` extra as a test-only dependency, so the bundled
+  schema and the emitted envelopes are checked against each other by a real
+  validator. benchguard itself imports nothing outside the standard library.
 - Command line interface with four subcommands: `check` (read state now),
   `run -- <cmd>` (judge the interval around a command), `schema` (print the
   bundled JSON Schema) and `codes` (print the reason vocabulary). Exit codes
