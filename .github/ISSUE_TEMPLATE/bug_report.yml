@@ -1,0 +1,42 @@
+name: Bug report
+description: Something behaved differently from what the documentation says
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. The fields below are what make a report
+        diagnosable without a round trip of questions.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: The tool's own output
+      description: |
+        The full provenance envelope from the run, which you can get with
+        `benchverdict check --json`. It records the verdict, every reason code, and
+        every source that could not be read, which is usually enough to diagnose
+        the problem without any further questions.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `benchverdict --version`, or the commit you tested.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Operating system, kernel version, and whether this was inside a container or a CI runner.
+    validations:
+      required: true

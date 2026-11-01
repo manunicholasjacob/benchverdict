@@ -378,3 +378,21 @@ box GitHub renders from `CITATION.cff`.
 - Did not create `README.md`, and did not add or change anything under `src/`
   or `tests/`.
 - Did not post, publish or send anything anywhere.
+
+## PyPI publishing: no token needed
+
+`.github/workflows/publish.yml` uses PyPI Trusted Publishing over OIDC, so there is no API
+token to create, paste or rotate, and none is stored in this repository.
+
+One-time setup, which only you can do:
+
+1. On https://pypi.org, go to **Your projects -> Publishing -> Add a new pending publisher**
+   and enter owner `manunicholasjacob`, repository `benchverdict`, workflow name `publish.yml`,
+   environment name `pypi`.
+2. In this repository, **Settings -> Environments -> New environment**, named `pypi`.
+3. Push a tag beginning with `v`. The workflow builds, runs `twine check --strict`, refuses to
+   continue if the tag and the packaged version disagree, and then uploads.
+
+Do a dry run against TestPyPI first if you want one: add a second pending publisher on
+https://test.pypi.org and temporarily point the `pypa/gh-action-pypi-publish` step at it with
+`with: repository-url: https://test.pypi.org/legacy/`.
