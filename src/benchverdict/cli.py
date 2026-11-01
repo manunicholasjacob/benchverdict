@@ -46,7 +46,7 @@ def _add_threshold_args(p: argparse.ArgumentParser) -> None:
         type=float,
         default=1.0,
         metavar="SECONDS",
-        help="Minimum measured interval. Below this benchguard reports UNKNOWN "
+        help="Minimum measured interval. Below this benchverdict reports UNKNOWN "
         "rather than a confident PASS (default: 1.0).",
     )
     p.add_argument(
@@ -168,16 +168,16 @@ def _add_output_args(p: argparse.ArgumentParser) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="benchguard",
+        prog="benchverdict",
         description=(
             "Decide whether a performance measurement was valid, and say why it "
-            "was not. benchguard samples Linux cgroup, cpufreq, thermal, paging "
+            "was not. benchverdict samples Linux cgroup, cpufreq, thermal, paging "
             "and load state around a measurement and emits a "
             "measurement-provenance/1 envelope carrying the verdict."
         ),
         epilog="Exit codes: 0 ok, 1 INVALID, 2 UNKNOWN, 3 warnings, 64 usage.",
     )
-    parser.add_argument("--version", action="version", version="benchguard %s" % __version__)
+    parser.add_argument("--version", action="version", version="benchverdict %s" % __version__)
     sub = parser.add_subparsers(dest="command")
 
     p_check = sub.add_parser(
@@ -259,7 +259,7 @@ def main(argv: Optional[Sequence[str]] = None, stream: Any = None) -> int:
     raw = list(argv) if argv is not None else sys.argv[1:]
     args = parser.parse_args(raw)
     if args.command is None:
-        # No subcommand given: "benchguard" means "benchguard check". Re-parse
+        # No subcommand given: "benchverdict" means "benchverdict check". Re-parse
         # under the check subparser so its defaults are populated rather than
         # absent from the namespace.
         args = parser.parse_args(["check"] + raw)
@@ -310,7 +310,7 @@ def main(argv: Optional[Sequence[str]] = None, stream: Any = None) -> int:
         if cmd and cmd[0] == "--":
             cmd = cmd[1:]
         if not cmd:
-            parser.error("run needs a command, for example: benchguard run --strict -- pytest")
+            parser.error("run needs a command, for example: benchverdict run --strict -- pytest")
             return EXIT_USAGE
         g = _guard(
             label=args.label or " ".join(cmd),
@@ -323,7 +323,7 @@ def main(argv: Optional[Sequence[str]] = None, stream: Any = None) -> int:
                 proc = subprocess.run(cmd, check=False)
                 child_rc = proc.returncode
             except OSError as exc:
-                sys.stderr.write("benchguard: could not run %r: %s\n" % (cmd[0], exc))
+                sys.stderr.write("benchverdict: could not run %r: %s\n" % (cmd[0], exc))
                 child_rc = 127
         _emit(g, args, out)
         if child_rc != 0:

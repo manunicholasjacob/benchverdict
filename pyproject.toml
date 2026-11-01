@@ -3,7 +3,7 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "benchguard"
+name = "benchverdict"
 dynamic = ["version"]
 description = "Decide whether a performance measurement was valid, and say why it was not."
 readme = "README.md"
@@ -48,7 +48,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-# Zero runtime dependencies, deliberately. benchguard decides whether a
+# Zero runtime dependencies, deliberately. benchverdict decides whether a
 # measurement was valid, so it must be installable into the same environment as
 # the thing being measured without perturbing it, and it must import on a
 # machine where nothing third party is present. Everything it reads comes from
@@ -58,39 +58,39 @@ dependencies = []
 [project.optional-dependencies]
 pytest = ["pytest>=7.0"]
 # jsonschema is a test-only dependency: it proves the bundled schema and the
-# emitted envelopes agree. benchguard itself never imports it.
+# emitted envelopes agree. benchverdict itself never imports it.
 dev = ["pytest>=7.0", "ruff>=0.5", "jsonschema>=4.18"]
 
 [project.urls]
-Homepage = "https://github.com/manunicholasjacob/benchguard"
-Source = "https://github.com/manunicholasjacob/benchguard"
-Issues = "https://github.com/manunicholasjacob/benchguard/issues"
-Changelog = "https://github.com/manunicholasjacob/benchguard/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/manunicholasjacob/benchverdict"
+Source = "https://github.com/manunicholasjacob/benchverdict"
+Issues = "https://github.com/manunicholasjacob/benchverdict/issues"
+Changelog = "https://github.com/manunicholasjacob/benchverdict/blob/main/CHANGELOG.md"
 
 [project.scripts]
-benchguard = "benchguard.cli:main"
+benchverdict = "benchverdict.cli:main"
 
 [project.entry-points.pytest11]
-benchguard = "benchguard.pytest_plugin"
+benchverdict = "benchverdict.pytest_plugin"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
 
 [tool.setuptools.dynamic]
-version = { attr = "benchguard._version.__version__" }
+version = { attr = "benchverdict._version.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-benchguard = ["schema/*.json", "py.typed"]
+benchverdict = ["schema/*.json", "py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
 filterwarnings = [
     "error",
-    # Interpreter and toolchain noise that says nothing about benchguard.
+    # Interpreter and toolchain noise that says nothing about benchverdict.
     "default::DeprecationWarning:importlib._bootstrap",
     "default::ImportWarning",
     "default::ResourceWarning",

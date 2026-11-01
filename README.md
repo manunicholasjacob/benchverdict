@@ -1,18 +1,18 @@
-# benchguard
+# benchverdict
 
 Decide whether a performance measurement was valid, and fail the job when it was not.
 
-benchguard samples the machine *around* a measurement, as deltas rather than a
+benchverdict samples the machine *around* a measurement, as deltas rather than a
 before-snapshot, and returns one of four verdicts with a documented reason code,
 plus a provenance record of the conditions the number was taken under. It is a
 library, a pytest plugin, a GitHub Action and a CLI, all over the same small API.
 
 It answers a different question from a benchmark runner. A runner asks "how fast
-was it". benchguard asks "was the machine in a state where that number means
+was it". benchverdict asks "was the machine in a state where that number means
 anything", and says which reading made it decide.
 
 ```
-benchguard: INVALID (2.0041 s)
+benchverdict: INVALID (2.0041 s)
   [invalidating] CGROUP_THROTTLED: cgroup v2 CPU bandwidth control denied this process
     CPU time during the measurement: throttled time rose by 812345 usec, throttled
     periods rose by 37 periods (0.4053 of the measured wall time). Measured from
@@ -27,7 +27,7 @@ users, no downloads and no citations to report.
 ## Why it exists
 
 Three measurement failures from the author's own work are the reason each family
-of checks is here. They are cited as prior findings, not as anything benchguard
+of checks is here. They are cited as prior findings, not as anything benchverdict
 measured:
 
 - A CPU quota costs about 50 percent on Arm against about 64 percent on x86
@@ -48,8 +48,8 @@ memory", it was "here is the fault counter delta that shows it did".
 Nothing is published yet, so install from a checkout:
 
 ```sh
-git clone https://github.com/manunicholasjacob/benchguard
-cd benchguard
+git clone https://github.com/manunicholasjacob/benchverdict
+cd benchverdict
 python -m pip install -e .
 ```
 
@@ -57,7 +57,7 @@ Zero runtime dependencies. Python 3.9 or newer. The pytest plugin needs pytest,
 which is an optional extra (`pip install -e ".[pytest]"`); the library itself
 imports nothing outside the standard library.
 
-Once 0.1.0 is on PyPI the install becomes `pip install benchguard`, and the
+Once 0.1.0 is on PyPI the install becomes `pip install benchverdict`, and the
 `[project.urls]` and `CITATION.cff` in this repo already point at the right
 places for that.
 
@@ -66,9 +66,9 @@ places for that.
 ### 1. Around a block of code
 
 ```python
-import benchguard
+import benchverdict
 
-with benchguard.guard(min_duration=1.0, working_set_bytes=1_114_112_000) as g:
+with benchverdict.guard(min_duration=1.0, working_set_bytes=1_114_112_000) as g:
     latency_ms = run_decode_benchmark()
 
 print(g.verdict)        # 'PASS' | 'INVALID' | 'UNSUPPORTED' | 'UNKNOWN'
@@ -78,29 +78,29 @@ record = g.to_envelope()  # JSON-serializable provenance, == g.record
 ```
 
 Default behaviour is to report, not to raise. Pass `strict=True` to raise
-`benchguard.InvalidMeasurement` when the verdict is INVALID or UNKNOWN:
+`benchverdict.InvalidMeasurement` when the verdict is INVALID or UNKNOWN:
 
 ```python
-with benchguard.guard(min_duration=1.0, strict=True):
+with benchverdict.guard(min_duration=1.0, strict=True):
     latency_ms = run_decode_benchmark()
 ```
 
 The decorator form behaves the same way and leaves the guard on the function:
 
 ```python
-@benchguard.guarded(min_duration=1.0, working_set_bytes=1_114_112_000)
+@benchverdict.guarded(min_duration=1.0, working_set_bytes=1_114_112_000)
 def measure_decode():
     return run_decode_benchmark()
 
 measure_decode()
-measure_decode.benchguard.verdict
+measure_decode.benchverdict.verdict
 ```
 
 For a precheck before a long run, or just to record the configuration, read the
 state at a point in time:
 
 ```python
-state = benchguard.check()
+state = benchverdict.check()
 if state.verdict == 'INVALID':
     raise SystemExit(state.summary())
 ```
@@ -114,26 +114,26 @@ is otherwise indistinguishable from a function that got slower.
 ```python
 import pytest
 
-@pytest.mark.benchguard(min_duration=1.0, working_set_bytes=1_114_112_000)
+@pytest.mark.benchverdict(min_duration=1.0, working_set_bytes=1_114_112_000)
 def test_decode_latency(benchmark):
     result = benchmark(run_decode)
     assert result.stats.mean < 0.040
 ```
 
 ```sh
-pytest --benchguard-strict --benchguard-json provenance.json
+pytest --benchverdict-strict --benchverdict-json provenance.json
 ```
 
-Without the marker and without `--benchguard-all`, the plugin is inert. With
-`--benchguard-strict` an INVALID or UNKNOWN measurement fails the test with the
+Without the marker and without `--benchverdict-all`, the plugin is inert. With
+`--benchverdict-strict` an INVALID or UNKNOWN measurement fails the test with the
 reason codes attached. Without it, the verdict is a warning plus a terminal
 summary section. A test that fails on its own is never masked by a verdict: the
 real failure is reported, and the verdict is attached as a note.
 
-Options: `--benchguard-all`, `--benchguard-strict`,
-`--benchguard-fail-on-warnings`, `--benchguard-min-duration`,
-`--benchguard-working-set-bytes`, `--benchguard-json`, `--benchguard-root`,
-`--benchguard-assume-linux`.
+Options: `--benchverdict-all`, `--benchverdict-strict`,
+`--benchverdict-fail-on-warnings`, `--benchverdict-min-duration`,
+`--benchverdict-working-set-bytes`, `--benchverdict-json`, `--benchverdict-root`,
+`--benchverdict-assume-linux`.
 
 ### 3. As a GitHub Action
 
@@ -141,7 +141,7 @@ Options: `--benchguard-all`, `--benchguard-strict`,
 tag exists:
 
 ```yaml
-- uses: manunicholasjacob/benchguard@v0.1.0
+- uses: manunicholasjacob/benchverdict@v0.1.0
   with:
     command: python bench/decode.py --iterations 2000
     strict: 'true'
@@ -150,22 +150,22 @@ tag exists:
 ```
 
 The Action runs the command under a guard, writes the provenance envelope to
-`benchguard.json`, uploads it as a build artifact, puts the verdict and reason
+`benchverdict.json`, uploads it as a build artifact, puts the verdict and reason
 codes in `$GITHUB_STEP_SUMMARY`, exposes `verdict` and `codes` as step outputs,
 and fails the job on an invalid measurement when `strict` is true.
 
 ### Also: the CLI
 
 ```sh
-benchguard check --json                 # point-in-time state, as an envelope
-benchguard run --strict -- ./bench.sh   # guard a command
-benchguard codes                        # the whole reason vocabulary
-benchguard schema                       # the bundled JSON Schema
+benchverdict check --json                 # point-in-time state, as an envelope
+benchverdict run --strict -- ./bench.sh   # guard a command
+benchverdict codes                        # the whole reason vocabulary
+benchverdict schema                       # the bundled JSON Schema
 ```
 
 Exit codes: `0` ok, `1` INVALID, `2` UNKNOWN, `3` warnings present (with
 `--strict --fail-on-warnings`), `64` usage error. Without `--strict` the CLI
-reports and exits 0. For `benchguard run`, the wrapped command's own non-zero
+reports and exits 0. For `benchverdict run`, the wrapped command's own non-zero
 exit code takes precedence, because a benchmark that crashed should be reported
 as a crash and not as an invalid measurement.
 
@@ -176,9 +176,9 @@ as a crash and not as an invalid measurement.
 | `PASS` | No invalidating condition found, and the interval was long enough to say so. | No |
 | `INVALID` | At least one invalidating condition was observed during the measurement. | Yes, exit 1 |
 | `UNKNOWN` | Nothing invalidating was found, but the evidence does not support a confident PASS: the interval was shorter than `min_duration`, or not one state source could be read. | Yes, exit 2 |
-| `UNSUPPORTED` | This platform exposes none of the sources benchguard reads, so no verdict is offered. | No, by design |
+| `UNSUPPORTED` | This platform exposes none of the sources benchverdict reads, so no verdict is offered. | No, by design |
 
-`UNSUPPORTED` never fails a job. benchguard must not break a Windows or macOS CI
+`UNSUPPORTED` never fails a job. benchverdict must not break a Windows or macOS CI
 leg for being Windows or macOS.
 
 `UNKNOWN` exists because of a real failure mode. nucliweb/webperf-snippets#312
@@ -186,7 +186,7 @@ leg for being Windows or macOS.
 pull request that changes no code, against a gate of 2.0, over a few milliseconds
 of work; locally the same test ranged 0.85 to 3.68. Raising the workload to about
 20 ms settled the ratio into 3.74 to 4.02. A confident verdict over a few
-milliseconds would be a guess dressed as a finding, so benchguard reports low
+milliseconds would be a guess dressed as a finding, so benchverdict reports low
 confidence instead.
 
 ## Reason codes
@@ -216,10 +216,10 @@ not part of the contract.
 | `SOURCES_UNREADABLE` | warning | One or more state sources could not be read, so absence of a problem is not evidence of its absence. |
 | `THERMAL_RISE` | warning | The hottest thermal zone rose by more than the allowed amount during the measurement. |
 | `MAJOR_FAULTS_OBSERVED` | info | Major page faults occurred during the measurement. Reported without judgement because no max_major_faults was declared. |
-| `NOT_LINUX` | info | benchguard reads Linux sysfs and procfs. On any other platform it reports UNSUPPORTED rather than guessing. |
+| `NOT_LINUX` | info | benchverdict reads Linux sysfs and procfs. On any other platform it reports UNSUPPORTED rather than guessing. |
 | `NO_SOURCES` | info | No machine-state source could be read at all, so no verdict is possible. |
 
-`benchguard codes --json` prints this table from the same table the code uses, so
+`benchverdict codes --json` prints this table from the same table the code uses, so
 the two cannot drift.
 
 Two severities are configurable, because the right answer depends on what you are
@@ -272,7 +272,7 @@ Every result serializes to `measurement-provenance/1`, a small outer contract:
 ```json
 {
   "schema": "measurement-provenance/1",
-  "tool": {"name": "benchguard", "version": "0.1.0"},
+  "tool": {"name": "benchverdict", "version": "0.1.0"},
   "taken_at_utc": "2026-11-01T18:42:07Z",
   "duration_s": 2.0041,
   "platform": {"system": "Linux", "release": "6.6.51+rpt-rpi-2712",
@@ -289,14 +289,14 @@ Every result serializes to `measurement-provenance/1`, a small outer contract:
 
 Everything tool-specific lives under `measurement`. The nine top-level keys are
 fixed. The authoritative JSON Schema ships inside the package at
-`benchguard/schema/measurement-provenance-1.schema.json`, is printed by
-`benchguard schema`, and is reachable in Python as
-`benchguard.schema_path()` and `benchguard.load_schema()`.
+`benchverdict/schema/measurement-provenance-1.schema.json`, is printed by
+`benchverdict schema`, and is reachable in Python as
+`benchverdict.schema_path()` and `benchverdict.load_schema()`.
 
-`benchguard.validate_envelope(envelope)` returns a list of problems and needs no
+`benchverdict.validate_envelope(envelope)` returns a list of problems and needs no
 third-party validator; it is a convenience, not a replacement for running a real
-JSON Schema validator against the schema file. `benchguard.build_envelope()`
-assembles an envelope for a tool that is not benchguard.
+JSON Schema validator against the schema file. `benchverdict.build_envelope()`
+assembles an envelope for a tool that is not benchverdict.
 
 `unreadable` is load-bearing. A source listed there was not checked, so its
 absence from `reasons` is not evidence that it was fine.
@@ -307,7 +307,7 @@ absence from `reasons` is not evidence that it was fine.
 core cluster, and `powerstamp`, which reports energy with its measured sampling
 rate and uncertainty, are sibling tools that emit the same
 `measurement-provenance/1` envelope, so one parser reads all three and a consumer
-branches on `tool.name` before reading inside `measurement`. benchguard owns the
+branches on `tool.name` before reading inside `measurement`. benchverdict owns the
 `verdict` and `reasons` concepts in that contract and ships the schema. Neither
 sibling is published, and this section makes no claim about whether either ever
 will be.
@@ -315,7 +315,7 @@ will be.
 ## Related work
 
 Verified against the primary sources on 1 November 2026. Each of these is good at
-something benchguard does not do.
+something benchverdict does not do.
 
 **psf/pyperf** (MIT). `pyperf check` reads a saved result file and checks the
 *statistics*: it warns when the standard deviation reaches 10 percent of the
@@ -328,7 +328,7 @@ from `/sys/class/power_supply/*/online`. It has no thermal or throttling check o
 any platform. Issue #243, "pyperf system {tune,show} on macOS", has been open
 since 10 June 2026 with no implementation; thermal pressure and power source
 appear there among the macOS variance sources the reporter lists. pyperf tunes
-the machine and judges the statistics; benchguard judges the machine around the
+the machine and judges the statistics; benchverdict judges the machine around the
 measurement and returns a verdict about that measurement. They compose.
 
 **RRZE-HPC/MachineState** (GPL-3.0). Collects a broad system-state snapshot and
@@ -340,7 +340,7 @@ counters, no major page faults and no process-table scan. On a diff it prints
 "Current state differs" and then exits 0 unconditionally, so it cannot gate CI,
 and it ships no `action.yml`. (Its README carries a badge labelled "GitHub
 Action" which points at its own build workflow, not a published action.) Its
-value is documentation of a run; benchguard's is a verdict on one.
+value is documentation of a run; benchverdict's is a verdict on one.
 
 **benchmark-action/github-action-benchmark**. Collects benchmark tool output,
 stores it on a `gh-pages` branch, charts it, and alerts or fails the workflow
@@ -348,7 +348,7 @@ when a result regresses past a threshold. Under "Stability of Virtual
 Environment" its README reports that for the example suites in that repository
 "the amplitude of the benchmarks is about +- 10~20%", notes the amplitude may be
 bigger with network or file I/O, and offers self-hosted runners as the remedy. It
-validates no machine state. benchguard is complementary: it says whether a point
+validates no machine state. benchverdict is complementary: it says whether a point
 on that chart was worth plotting.
 
 **ionelmc/pytest-benchmark**. Records a `machine_info` dict with every saved run.
@@ -361,18 +361,18 @@ last time", not "bad machine state right now".
 precheck script to run on build machines". Opened 14 February 2019, closed by
 `stale[bot]` on 29 April 2019; the only two comments on it are the bot's, no
 human replied, and it was never built. Two details from the report shaped
-benchguard: the machine showed every governor at `performance` while `cpu MHz`
+benchverdict: the machine showed every governor at `performance` while `cpu MHz`
 read 800.355 on a part labelled 3.70 GHz, which is why the governor check and the
 frequency-ratio check are separate here; and the reporter flagged that
 `/proc/cpuinfo` is "not structured" and that parsing it risked breaking the CI,
-which is why benchguard parses integer sysfs files instead.
+which is why benchverdict parses integer sysfs files instead.
 
 **VictoriaMetrics/VictoriaMetrics#10430**, "Add CPU throttling metrics from
 cgroup cpu.stat (quota throttling proof)". Open since 10 February 2026. It argues
 that from inside a process it is hard to prove or refute quota throttling: CPU
 time counters show how much CPU was used, not how much was denied, and pressure
 stall information is a pressure signal rather than a quota-throttling counter. It
-is the clearest public statement of why benchguard reads `cpu.stat` as a delta
+is the clearest public statement of why benchverdict reads `cpu.stat` as a delta
 rather than inferring throttling from utilisation. One maintainer-side comment
 there argues that a specialized tool should do this job, which is an argument for
 a standalone checker rather than against one.
@@ -398,9 +398,9 @@ Read these before trusting a verdict.
   these files exactly where the fixtures put them. Treat the cgroup v1 path
   discovery, the nested cgroup v2 walk-up and the Raspberry Pi probe as the most
   likely places for a real machine to disagree, and please open an issue with
-  `benchguard check --json` output if one does.
+  `benchverdict check --json` output if one does.
 - **A `PASS` is bounded by what was readable.** It means "none of the sources
-  benchguard could read showed a problem", not "the machine was quiet". Read
+  benchverdict could read showed a problem", not "the machine was quiet". Read
   `unreadable` alongside the verdict. If nothing at all was readable the verdict
   is `UNKNOWN`, not `PASS`.
 - **Sampling around a measurement is not sampling during it.** A condition that
@@ -416,7 +416,7 @@ Read these before trusting a verdict.
   with a known outcome. Set them for your own workload.
 - **Temperature is not throttling.** A hot zone warns; only a throttle event
   counter or a Raspberry Pi live bit invalidates.
-- **benchguard measures nothing itself.** It reports no latency, no bandwidth and
+- **benchverdict measures nothing itself.** It reports no latency, no bandwidth and
   no energy. It has no opinion about whether your number is good, only about
   whether it is meaningful.
 
@@ -439,10 +439,10 @@ Measured on 1 November 2026, on Windows 11 with Python 3.14.6, with
 ```
 ============================= test session starts =============================
 platform win32 -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0
-rootdir: C:\Users\manun\OneDrive\Documents\Claudecode\benchguard
+rootdir: C:\Users\manun\OneDrive\Documents\Claudecode\benchverdict
 configfile: pyproject.toml
 testpaths: tests
-plugins: benchguard-0.1.0
+plugins: benchverdict-0.1.0
 collected 245 items
 
 tests\test_api.py .................................                      [ 13%]

@@ -1,4 +1,4 @@
-name: 'benchguard'
+name: 'benchverdict'
 description: 'Validate the machine state around a benchmark command and fail the job when the measurement was INVALID.'
 author: 'Manu Nicholas Jacob'
 
@@ -19,7 +19,7 @@ inputs:
     required: false
     default: 'false'
   min-duration:
-    description: 'Minimum measured interval in seconds. Below this benchguard reports UNKNOWN rather than a confident PASS.'
+    description: 'Minimum measured interval in seconds. Below this benchverdict reports UNKNOWN rather than a confident PASS.'
     required: false
     default: '1.0'
   working-set-bytes:
@@ -41,13 +41,13 @@ inputs:
   output:
     description: 'Path the measurement-provenance/1 envelope is written to.'
     required: false
-    default: 'benchguard.json'
+    default: 'benchverdict.json'
   python-version:
-    description: 'Python version to set up before installing benchguard. Empty means use whatever python is already on PATH.'
+    description: 'Python version to set up before installing benchverdict. Empty means use whatever python is already on PATH.'
     required: false
     default: ''
   version:
-    description: 'benchguard version to install from PyPI. Empty means install from the action checkout itself.'
+    description: 'benchverdict version to install from PyPI. Empty means install from the action checkout itself.'
     required: false
     default: ''
   upload-artifact:
@@ -57,21 +57,21 @@ inputs:
   artifact-name:
     description: 'Name of the uploaded provenance artifact.'
     required: false
-    default: 'benchguard-provenance'
+    default: 'benchverdict-provenance'
 
 outputs:
   verdict:
     description: 'PASS, INVALID, UNSUPPORTED or UNKNOWN. Empty if no envelope was produced.'
-    value: ${{ steps.benchguard.outputs.verdict }}
+    value: ${{ steps.benchverdict.outputs.verdict }}
   codes:
     description: 'Comma-separated reason codes, in severity order. Empty when there were no findings.'
-    value: ${{ steps.benchguard.outputs.codes }}
+    value: ${{ steps.benchverdict.outputs.codes }}
   envelope-path:
     description: 'Path to the measurement-provenance/1 envelope that was written.'
-    value: ${{ steps.benchguard.outputs.envelope-path }}
+    value: ${{ steps.benchverdict.outputs.envelope-path }}
   exit-code:
-    description: 'Exit code of the benchguard run. The wrapped command own non-zero exit code takes precedence over the verdict exit code.'
-    value: ${{ steps.benchguard.outputs.exit-code }}
+    description: 'Exit code of the benchverdict run. The wrapped command own non-zero exit code takes precedence over the verdict exit code.'
+    value: ${{ steps.benchverdict.outputs.exit-code }}
 
 runs:
   using: 'composite'
@@ -82,7 +82,7 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install benchguard
+    - name: Install benchverdict
       shell: bash
       env:
         BG_VERSION: ${{ inputs.version }}
@@ -96,12 +96,12 @@ runs:
           # complete, installable source tree.
           python -m pip install --disable-pip-version-check "$BG_ACTION_PATH"
         else
-          python -m pip install --disable-pip-version-check "benchguard==$BG_VERSION"
+          python -m pip install --disable-pip-version-check "benchverdict==$BG_VERSION"
         fi
-        benchguard --version
+        benchverdict --version
 
-    - name: Run benchguard
-      id: benchguard
+    - name: Run benchverdict
+      id: benchverdict
       shell: bash
       env:
         BG_COMMAND: ${{ inputs.command }}
@@ -143,12 +143,12 @@ runs:
           ARGS+=( "--fail-on-warnings" )
         fi
 
-        echo "benchguard run ${ARGS[*]} -- bash -c <command>"
+        echo "benchverdict run ${ARGS[*]} -- bash -c <command>"
 
         # The verdict gate is a later step, so this step must not die on a
         # non-zero exit code of its own.
         set +e
-        benchguard run "${ARGS[@]}" -- bash -c "$BG_COMMAND"
+        benchverdict run "${ARGS[@]}" -- bash -c "$BG_COMMAND"
         RC=$?
         set -e
 
@@ -191,17 +191,17 @@ runs:
         except (OSError, ValueError):
             env = None
 
-        lines = ["## benchguard", ""]
+        lines = ["## benchverdict", ""]
         if not isinstance(env, dict):
             lines.append("No provenance envelope was produced at `%s`." % path)
             lines.append("")
-            lines.append("benchguard exit code: `%s`" % rc)
+            lines.append("benchverdict exit code: `%s`" % rc)
         else:
             lines.append("**Verdict:** `%s`" % (env.get("verdict") or "unknown"))
             lines.append("")
             lines.append("**Duration:** %.4f s" % float(env.get("duration_s") or 0.0))
             lines.append("")
-            lines.append("**benchguard exit code:** `%s`" % rc)
+            lines.append("**benchverdict exit code:** `%s`" % rc)
             lines.append("")
             reasons = [r for r in (env.get("reasons") or []) if isinstance(r, dict)]
             if not reasons:
@@ -239,9 +239,9 @@ runs:
       shell: bash
       env:
         BG_STRICT: ${{ inputs.strict }}
-        BG_VERDICT: ${{ steps.benchguard.outputs.verdict }}
-        BG_CODES: ${{ steps.benchguard.outputs.codes }}
-        BG_RC: ${{ steps.benchguard.outputs.exit-code }}
+        BG_VERDICT: ${{ steps.benchverdict.outputs.verdict }}
+        BG_CODES: ${{ steps.benchverdict.outputs.codes }}
+        BG_RC: ${{ steps.benchverdict.outputs.exit-code }}
       run: |
         set -uo pipefail
         # An empty or non-numeric exit code means the run step never got far
@@ -253,14 +253,14 @@ runs:
         esac
         if [ "$RC" != "0" ]; then
           if [ "$BG_STRICT" = "true" ]; then
-            echo "::error title=benchguard::verdict ${BG_VERDICT:-unknown}, exit code ${RC}, reason codes: ${BG_CODES:-none}. Either the benchmark command failed or the measurement was not valid. See the job summary and the uploaded provenance envelope."
+            echo "::error title=benchverdict::verdict ${BG_VERDICT:-unknown}, exit code ${RC}, reason codes: ${BG_CODES:-none}. Either the benchmark command failed or the measurement was not valid. See the job summary and the uploaded provenance envelope."
           else
-            echo "::error title=benchguard::the benchmark command exited ${RC}. verdict ${BG_VERDICT:-unknown}, reason codes: ${BG_CODES:-none}."
+            echo "::error title=benchverdict::the benchmark command exited ${RC}. verdict ${BG_VERDICT:-unknown}, reason codes: ${BG_CODES:-none}."
           fi
           exit "$RC"
         fi
         if [ "$BG_STRICT" != "true" ] && { [ "$BG_VERDICT" = "INVALID" ] || [ "$BG_VERDICT" = "UNKNOWN" ]; }; then
-          echo "::warning title=benchguard::verdict ${BG_VERDICT}, reason codes: ${BG_CODES:-none}. Not failing the job because strict is '${BG_STRICT}'."
+          echo "::warning title=benchverdict::verdict ${BG_VERDICT}, reason codes: ${BG_CODES:-none}. Not failing the job because strict is '${BG_STRICT}'."
           exit 0
         fi
-        echo "benchguard: verdict ${BG_VERDICT:-unknown}, reason codes: ${BG_CODES:-none}"
+        echo "benchverdict: verdict ${BG_VERDICT:-unknown}, reason codes: ${BG_CODES:-none}"

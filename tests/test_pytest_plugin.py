@@ -2,7 +2,7 @@
 
 Each case runs a nested pytest through the ``pytester`` fixture. The inner runs
 set ``PYTEST_DISABLE_PLUGIN_AUTOLOAD`` and load the plugin explicitly with
-``-p benchguard.pytest_plugin``, so a case is not affected by whatever other
+``-p benchverdict.pytest_plugin``, so a case is not affected by whatever other
 pytest plugins happen to be installed on the host, and is not affected by this
 project's own ``filterwarnings = error``.
 """
@@ -28,7 +28,7 @@ def inner(pytester, monkeypatch):
 
     def run(*args: str):
         return pytester.runpytest(
-            "-p", "benchguard.pytest_plugin", "-W", "default", *args
+            "-p", "benchverdict.pytest_plugin", "-W", "default", *args
         )
 
 
@@ -55,24 +55,24 @@ def throttle_source(tree: Tree) -> str:
 class TestInertByDefault:
     def test_unmarked_test_is_not_guarded(self, pytester, inner, plugin_tree):
         make_test(pytester, "assert 1 + 1 == 2")
-        result = inner("--benchguard-assume-linux", "--benchguard-root", plugin_tree.root)
+        result = inner("--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root)
         result.assert_outcomes(passed=1)
         assert "measurements judged" not in result.stdout.str()
 
     def test_marker_is_registered_so_strict_markers_is_satisfied(
         self, pytester, inner, plugin_tree
     ):
-        make_test(pytester, "assert True", "@pytest.mark.benchguard(min_duration=0.0)")
-        result = inner("--strict-markers", "--benchguard-assume-linux", "--benchguard-root", plugin_tree.root)
+        make_test(pytester, "assert True", "@pytest.mark.benchverdict(min_duration=0.0)")
+        result = inner("--strict-markers", "--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root)
         result.assert_outcomes(passed=1)
 
 
 class TestMarkedTests:
     def test_healthy_machine_passes_and_is_summarised(self, pytester, inner, plugin_tree):
-        make_test(pytester, "assert True", "@pytest.mark.benchguard(min_duration=0.0)")
-        result = inner("--benchguard-assume-linux", "--benchguard-root", plugin_tree.root)
+        make_test(pytester, "assert True", "@pytest.mark.benchverdict(min_duration=0.0)")
+        result = inner("--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root)
         result.assert_outcomes(passed=1)
-        result.stdout.fnmatch_lines(["*benchguard * (measurement-provenance/1)*"])
+        result.stdout.fnmatch_lines(["*benchverdict * (measurement-provenance/1)*"])
         result.stdout.fnmatch_lines(["*measurements judged: PASS=1*"])
 
     def test_invalid_measurement_warns_but_passes_without_strict(
@@ -81,11 +81,11 @@ class TestMarkedTests:
         make_test(
             pytester,
             throttle_source(plugin_tree),
-            "@pytest.mark.benchguard(min_duration=0.0)",
+            "@pytest.mark.benchverdict(min_duration=0.0)",
         )
-        result = inner("--benchguard-assume-linux", "--benchguard-root", plugin_tree.root, "-rw")
+        result = inner("--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root, "-rw")
         result.assert_outcomes(passed=1)
-        assert "BenchguardWarning" in result.stdout.str()
+        assert "BenchverdictWarning" in result.stdout.str()
         result.stdout.fnmatch_lines(["*measurements judged: INVALID=1*"])
         assert "CGROUP_THROTTLED" in result.stdout.str()
 
@@ -93,9 +93,9 @@ class TestMarkedTests:
         make_test(
             pytester,
             throttle_source(plugin_tree),
-            "@pytest.mark.benchguard(min_duration=0.0)",
+            "@pytest.mark.benchverdict(min_duration=0.0)",
         )
-        result = inner("--benchguard-strict", "--benchguard-assume-linux", "--benchguard-root", plugin_tree.root)
+        result = inner("--benchverdict-strict", "--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root)
         result.assert_outcomes(failed=1)
         assert "measurement INVALID, not merely slow" in result.stdout.str()
         assert "CGROUP_THROTTLED" in result.stdout.str()
@@ -104,29 +104,29 @@ class TestMarkedTests:
         make_test(
             pytester,
             throttle_source(plugin_tree),
-            "@pytest.mark.benchguard(min_duration=0.0, strict=True)",
+            "@pytest.mark.benchverdict(min_duration=0.0, strict=True)",
         )
-        result = inner("--benchguard-assume-linux", "--benchguard-root", plugin_tree.root)
+        result = inner("--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root)
         result.assert_outcomes(failed=1)
 
     def test_short_measurement_is_unknown_under_strict(self, pytester, inner, plugin_tree):
-        make_test(pytester, "assert True", "@pytest.mark.benchguard(min_duration=600.0)")
-        result = inner("--benchguard-strict", "--benchguard-assume-linux", "--benchguard-root", plugin_tree.root)
+        make_test(pytester, "assert True", "@pytest.mark.benchverdict(min_duration=600.0)")
+        result = inner("--benchverdict-strict", "--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root)
         result.assert_outcomes(failed=1)
         assert "measurement UNKNOWN, not merely slow" in result.stdout.str()
         assert "SHORT_DURATION" in result.stdout.str()
 
     def test_fail_on_warnings_opt_in(self, pytester, inner, plugin_tree):
         plugin_tree.set_governor("powersave")
-        make_test(pytester, "assert True", "@pytest.mark.benchguard(min_duration=0.0)")
-        inner("--benchguard-strict", "--benchguard-assume-linux", "--benchguard-root", plugin_tree.root).assert_outcomes(
+        make_test(pytester, "assert True", "@pytest.mark.benchverdict(min_duration=0.0)")
+        inner("--benchverdict-strict", "--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root).assert_outcomes(
             passed=1
         )
         failing = inner(
-            "--benchguard-strict",
-            "--benchguard-fail-on-warnings",
-            "--benchguard-assume-linux",
-            "--benchguard-root",
+            "--benchverdict-strict",
+            "--benchverdict-fail-on-warnings",
+            "--benchverdict-assume-linux",
+            "--benchverdict-root",
             plugin_tree.root,
         )
         failing.assert_outcomes(failed=1)
@@ -134,14 +134,14 @@ class TestMarkedTests:
 
 
 class TestOptions:
-    def test_benchguard_all_guards_unmarked_tests(self, pytester, inner, plugin_tree):
+    def test_benchverdict_all_guards_unmarked_tests(self, pytester, inner, plugin_tree):
         make_test(pytester, "assert True")
         result = inner(
-            "--benchguard-all",
-            "--benchguard-min-duration",
+            "--benchverdict-all",
+            "--benchverdict-min-duration",
             "0",
-            "--benchguard-assume-linux",
-            "--benchguard-root",
+            "--benchverdict-assume-linux",
+            "--benchverdict-root",
             plugin_tree.root,
         )
         result.assert_outcomes(passed=1)
@@ -151,26 +151,26 @@ class TestOptions:
         plugin_tree.set_mem_available(1000)
         make_test(pytester, "assert True")
         result = inner(
-            "--benchguard-all",
-            "--benchguard-min-duration",
+            "--benchverdict-all",
+            "--benchverdict-min-duration",
             "0",
-            "--benchguard-working-set-bytes",
+            "--benchverdict-working-set-bytes",
             "4000000000",
-            "--benchguard-assume-linux",
-            "--benchguard-root",
+            "--benchverdict-assume-linux",
+            "--benchverdict-root",
             plugin_tree.root,
             "-rw",
         )
         result.assert_outcomes(passed=1)
-        assert "BenchguardWarning" in result.stdout.str()
+        assert "BenchverdictWarning" in result.stdout.str()
         assert "LOW_MEMORY_HEADROOM" in result.stdout.str()
 
     def test_json_output_is_an_array_of_envelopes(self, pytester, inner, plugin_tree):
         target = pytester.path / "envelopes.json"
-        make_test(pytester, "assert True", "@pytest.mark.benchguard(min_duration=0.0)")
+        make_test(pytester, "assert True", "@pytest.mark.benchverdict(min_duration=0.0)")
         result = inner(
-            "--benchguard-json", str(target), "--benchguard-assume-linux",
-            "--benchguard-root", plugin_tree.root
+            "--benchverdict-json", str(target), "--benchverdict-assume-linux",
+            "--benchverdict-root", plugin_tree.root
         )
         result.assert_outcomes(passed=1)
         payload = json.loads(target.read_text())
@@ -178,13 +178,13 @@ class TestOptions:
         assert payload[0]["schema"] == "measurement-provenance/1"
         assert payload[0]["verdict"] == "PASS"
         assert payload[0]["measurement"]["label"].endswith("test_measurement")
-        assert payload[0]["tool"]["name"] == "benchguard"
+        assert payload[0]["tool"]["name"] == "benchverdict"
 
     def test_unknown_marker_keyword_is_a_usage_error(self, pytester, inner, plugin_tree):
-        make_test(pytester, "assert True", "@pytest.mark.benchguard(nonsense=1)")
-        result = inner("--benchguard-assume-linux", "--benchguard-root", plugin_tree.root)
+        make_test(pytester, "assert True", "@pytest.mark.benchverdict(nonsense=1)")
+        result = inner("--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root)
         assert result.ret != 0
-        assert "unknown @pytest.mark.benchguard keyword" in (
+        assert "unknown @pytest.mark.benchverdict keyword" in (
             result.stdout.str() + result.stderr.str()
         )
 
@@ -194,17 +194,17 @@ class TestInteractionWithRealFailures:
         make_test(
             pytester,
             "assert 1 == 2, 'the code under test is wrong'",
-            "@pytest.mark.benchguard(min_duration=0.0, strict=True)",
+            "@pytest.mark.benchverdict(min_duration=0.0, strict=True)",
         )
-        result = inner("--benchguard-assume-linux", "--benchguard-root", plugin_tree.root)
+        result = inner("--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root)
         result.assert_outcomes(failed=1)
         assert "the code under test is wrong" in result.stdout.str()
         assert "not merely slow" not in result.stdout.str()
 
     def test_a_failure_on_an_invalid_machine_is_annotated(self, pytester, inner, plugin_tree):
         body = throttle_source(plugin_tree) + "assert 1 == 2, 'timing assertion'\n"
-        make_test(pytester, body, "@pytest.mark.benchguard(min_duration=0.0, strict=True)")
-        result = inner("--benchguard-assume-linux", "--benchguard-root", plugin_tree.root)
+        make_test(pytester, body, "@pytest.mark.benchverdict(min_duration=0.0, strict=True)")
+        result = inner("--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root)
         result.assert_outcomes(failed=1)
         assert "may not be about the code under test" in result.stdout.str()
 
@@ -212,7 +212,7 @@ class TestInteractionWithRealFailures:
         make_test(
             pytester,
             "assert True",
-            "@pytest.mark.benchguard(min_duration=600.0, strict=True, assume_linux=False)",
+            "@pytest.mark.benchverdict(min_duration=600.0, strict=True, assume_linux=False)",
         )
         result = inner()
         result.assert_outcomes(passed=1)
@@ -226,12 +226,12 @@ class TestReportProperties:
             def pytest_runtest_logreport(report):
                 if report.when == 'call':
                     props = dict(report.user_properties)
-                    print('VERDICT=' + props.get('benchguard_verdict', 'none'))
-                    print('CODES=' + props.get('benchguard_codes', 'none'))
+                    print('VERDICT=' + props.get('benchverdict_verdict', 'none'))
+                    print('CODES=' + props.get('benchverdict_codes', 'none'))
             """
         )
-        make_test(pytester, "assert True", "@pytest.mark.benchguard(min_duration=0.0)")
-        result = inner("--benchguard-assume-linux", "--benchguard-root", plugin_tree.root, "-s")
+        make_test(pytester, "assert True", "@pytest.mark.benchverdict(min_duration=0.0)")
+        result = inner("--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root, "-s")
         result.assert_outcomes(passed=1)
         assert "VERDICT=PASS" in result.stdout.str()
         assert "CODES=" in result.stdout.str()
@@ -244,11 +244,11 @@ class TestReportProperties:
             def pytest_runtest_logreport(report):
                 if report.when == 'call':
                     props = dict(report.user_properties)
-                    env = json.loads(props['benchguard_envelope'])
+                    env = json.loads(props['benchverdict_envelope'])
                     print('SCHEMA=' + env['schema'])
             """
         )
-        make_test(pytester, "assert True", "@pytest.mark.benchguard(min_duration=0.0)")
-        result = inner("--benchguard-assume-linux", "--benchguard-root", plugin_tree.root, "-s")
+        make_test(pytester, "assert True", "@pytest.mark.benchverdict(min_duration=0.0)")
+        result = inner("--benchverdict-assume-linux", "--benchverdict-root", plugin_tree.root, "-s")
         result.assert_outcomes(passed=1)
         assert "SCHEMA=measurement-provenance/1" in result.stdout.str()

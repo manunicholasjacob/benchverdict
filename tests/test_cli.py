@@ -8,8 +8,8 @@ import sys
 
 import pytest
 
-from benchguard.checks import REASON_CODES
-from benchguard.cli import (
+from benchverdict.checks import REASON_CODES
+from benchverdict.cli import (
     EXIT_INVALID,
     EXIT_OK,
     EXIT_UNKNOWN,
@@ -31,7 +31,7 @@ def linux_args(tree):
 
 class TestMeta:
     def test_parser_builds(self):
-        assert build_parser().prog == "benchguard"
+        assert build_parser().prog == "benchverdict"
 
     def test_version_exits_zero(self):
         with pytest.raises(SystemExit) as exc:
@@ -77,19 +77,19 @@ class TestCheck:
     def test_default_subcommand_is_check(self):
         code, out = run()
         assert code == EXIT_OK
-        assert "benchguard:" in out
+        assert "benchverdict:" in out
 
     def test_human_summary(self, tree):
         code, out = run("check", *linux_args(tree))
         assert code == EXIT_OK
-        assert out.startswith("benchguard: PASS")
+        assert out.startswith("benchverdict: PASS")
 
     def test_json_envelope(self, tree):
         code, out = run("check", "--json", *linux_args(tree))
         envelope = json.loads(out)
         assert envelope["schema"] == "measurement-provenance/1"
         assert envelope["verdict"] == "PASS"
-        assert envelope["tool"]["name"] == "benchguard"
+        assert envelope["tool"]["name"] == "benchverdict"
 
     def test_quiet_prints_nothing(self, tree):
         code, out = run("check", "--quiet", *linux_args(tree))
@@ -227,7 +227,7 @@ class TestRun:
     def test_missing_executable_is_reported_as_127(self, tree):
         code, _ = run(
             "run", "--quiet", "--min-duration", "0", *linux_args(tree),
-            "--", "benchguard-no-such-binary-xyz",
+            "--", "benchverdict-no-such-binary-xyz",
         )
         assert code == 127
 
@@ -238,4 +238,4 @@ class TestRun:
             *linux_args(tree),
             "--", sys.executable, "-c", "pass",
         )
-        assert json.loads(target.read_text())["tool"]["name"] == "benchguard"
+        assert json.loads(target.read_text())["tool"]["name"] == "benchverdict"

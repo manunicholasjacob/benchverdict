@@ -35,28 +35,28 @@ jobs:
         run: python -m pytest -v
 
       # shell: bash is set explicitly so the same script runs on windows-latest
-      # through Git Bash. benchguard check exits 0 on Windows because the
-      # verdict is UNSUPPORTED: benchguard reads Linux sysfs and procfs and
+      # through Git Bash. benchverdict check exits 0 on Windows because the
+      # verdict is UNSUPPORTED: benchverdict reads Linux sysfs and procfs and
       # refuses to guess anywhere else, so an unreadable platform must never
       # fail a job.
       - name: CLI smoke test
         shell: bash
         run: |
           set -euo pipefail
-          benchguard --version
-          benchguard codes
-          benchguard schema > schema.json
+          benchverdict --version
+          benchverdict codes
+          benchverdict schema > schema.json
           python -c "import json; json.load(open('schema.json', encoding='utf-8'))"
-          benchguard check --json > envelope.json
+          benchverdict check --json > envelope.json
           python <<'PY'
           import json
 
-          import benchguard
+          import benchverdict
 
           with open("envelope.json", encoding="utf-8") as fh:
               env = json.load(fh)
           print("verdict:", env["verdict"])
-          problems = benchguard.validate_envelope(env)
+          problems = benchverdict.validate_envelope(env)
           for problem in problems:
               print("envelope problem:", problem)
           raise SystemExit(1 if problems else 0)
@@ -103,7 +103,7 @@ jobs:
           command: python -c "import time; time.sleep(1.5)"
           strict: 'false'
           min-duration: '1.0'
-          artifact-name: benchguard-provenance-ci
+          artifact-name: benchverdict-provenance-ci
 
       - name: Assert the action produced a verdict
         shell: bash

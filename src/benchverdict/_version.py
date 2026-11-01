@@ -1,4 +1,4 @@
-"""Single source of truth for the benchguard version."""
+"""Single source of truth for the benchverdict version."""
 
 __version__ = "0.1.0"
 

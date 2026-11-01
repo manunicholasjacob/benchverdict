@@ -1,9 +1,9 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata in this file."
 type: software
-title: benchguard
+title: benchverdict
 abstract: >-
-  benchguard decides whether a performance measurement was valid by sampling
+  benchverdict decides whether a performance measurement was valid by sampling
   Linux cgroup, cpufreq, thermal, paging and load state around the measurement,
   and it fails the job when the measurement was not valid. It ships as a
   library, a pytest plugin and a composite GitHub Action, and it records the
@@ -17,8 +17,8 @@ authors:
 version: 0.1.0
 date-released: '2026-11-01'
 license: MIT
-repository-code: "https://github.com/manunicholasjacob/benchguard"
-url: "https://github.com/manunicholasjacob/benchguard"
+repository-code: "https://github.com/manunicholasjacob/benchverdict"
+url: "https://github.com/manunicholasjacob/benchverdict"
 keywords:
   - benchmark
   - performance

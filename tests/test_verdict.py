@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from conftest import fake_vcgencmd, probe_for
 
-from benchguard.checks import (
+from benchverdict.checks import (
     REASON_CODES,
     Severity,
     Thresholds,
@@ -315,7 +315,7 @@ class TestDurationConfidence:
 
 class TestUnsupported:
     def test_non_linux_pair_is_unsupported(self, tree):
-        from benchguard.sources import Probe
+        from benchverdict.sources import Probe
 
         probe = Probe(root=tree.root, assume_linux=False)
         result = evaluate(probe.sample(), probe.sample(), 2.0)
@@ -323,7 +323,7 @@ class TestUnsupported:
         assert codes(result) == ["NOT_LINUX"]
 
     def test_unsupported_is_not_invalid(self, tree):
-        from benchguard.sources import Probe
+        from benchverdict.sources import Probe
 
         probe = Probe(root=tree.root, assume_linux=False)
         result = evaluate(probe.sample(), probe.sample(), 2.0)
@@ -377,7 +377,7 @@ class TestPointInTime:
         assert result["verdict"] == Verdict.PASS
 
     def test_unsupported(self, tree):
-        from benchguard.sources import Probe
+        from benchverdict.sources import Probe
 
         result = evaluate_point_in_time(Probe(root=tree.root, assume_linux=False).sample())
         assert result["verdict"] == Verdict.UNSUPPORTED

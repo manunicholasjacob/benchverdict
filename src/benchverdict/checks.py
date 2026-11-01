@@ -30,7 +30,7 @@ __all__ = [
 
 
 class Verdict:
-    """The four verdicts benchguard can return."""
+    """The four verdicts benchverdict can return."""
 
     PASS = "PASS"
     INVALID = "INVALID"
@@ -135,7 +135,7 @@ REASON_CODES: Dict[str, Any] = {
     ),
     "NOT_LINUX": (
         Severity.INFO,
-        "benchguard reads Linux sysfs and procfs. On any other platform it reports "
+        "benchverdict reads Linux sysfs and procfs. On any other platform it reports "
         "UNSUPPORTED rather than guessing.",
     ),
     "NO_SOURCES": (
@@ -164,7 +164,7 @@ class Reason:
 class Thresholds:
     """Every tunable, with its default and the reason the default is what it is."""
 
-    #: Minimum measured wall time. Below this, benchguard returns UNKNOWN rather
+    #: Minimum measured wall time. Below this, benchverdict returns UNKNOWN rather
     #: than a confident PASS. nucliweb/webperf-snippets#312 (merged 24 Oct 2026)
     #: is the worked example: a few milliseconds of work produced CPU-throttle
     #: ratios of 1.53 and 0.92 on two refs whose code was identical, against a
@@ -392,7 +392,7 @@ def evaluate(
         res = _unsupported(
             "NOT_LINUX",
             "This platform exposes none of the Linux sysfs and procfs sources "
-            "benchguard samples, so no verdict is offered.",
+            "benchverdict samples, so no verdict is offered.",
         )
         res["measurement"] = {"duration_s": duration_s, "samples_taken": 2}
         res["unreadable"] = sorted(
@@ -662,7 +662,7 @@ def evaluate(
         reasons.append(
             _reason(
                 "SOURCES_UNREADABLE",
-                "%d state source(s) could not be read: %s. benchguard reports them "
+                "%d state source(s) could not be read: %s. benchverdict reports them "
                 "rather than filling in a plausible value."
                 % (len(unreadable), "; ".join(unreadable)),
             )
@@ -715,7 +715,7 @@ def evaluate_point_in_time(
         res = _unsupported(
             "NOT_LINUX",
             "This platform exposes none of the Linux sysfs and procfs sources "
-            "benchguard samples, so no verdict is offered.",
+            "benchverdict samples, so no verdict is offered.",
         )
         res["unreadable"] = list(sample.get("unreadable") or [])
         return res
@@ -783,7 +783,7 @@ def evaluate_point_in_time(
         reasons.append(
             _reason(
                 "SOURCES_UNREADABLE",
-                "%d state source(s) could not be read: %s. benchguard reports them "
+                "%d state source(s) could not be read: %s. benchverdict reports them "
                 "rather than filling in a plausible value."
                 % (len(unreadable), "; ".join(unreadable)),
             )

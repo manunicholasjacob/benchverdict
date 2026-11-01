@@ -8,9 +8,9 @@ import re
 import pytest
 from conftest import probe_for
 
-import benchguard
-from benchguard.checks import REASON_CODES, Reason, Severity
-from benchguard.envelope import (
+import benchverdict
+from benchverdict.checks import REASON_CODES, Reason, Severity
+from benchverdict.envelope import (
     SCHEMA_ID,
     build_envelope,
     load_schema,
@@ -47,14 +47,14 @@ def an_envelope(**kwargs):
 class TestShape:
     def test_schema_id(self):
         assert SCHEMA_ID == "measurement-provenance/1"
-        assert benchguard.SCHEMA_ID == SCHEMA_ID
+        assert benchverdict.SCHEMA_ID == SCHEMA_ID
 
     def test_exact_top_level_keys_in_order(self):
         assert list(an_envelope().keys()) == TOP_LEVEL_KEYS
 
     def test_tool_block(self):
         env = an_envelope()
-        assert env["tool"] == {"name": "benchguard", "version": benchguard.__version__}
+        assert env["tool"] == {"name": "benchverdict", "version": benchverdict.__version__}
 
     def test_taken_at_utc_is_iso_8601_with_a_z(self):
         env = an_envelope()
@@ -161,7 +161,7 @@ class TestBundledSchema:
 
     def test_jsonschema_agrees_when_a_2020_12_validator_is_installed(self):
         jsonschema = pytest.importorskip(
-            "jsonschema", reason="jsonschema is not a dependency of benchguard"
+            "jsonschema", reason="jsonschema is not a dependency of benchverdict"
         )
         validator_cls = getattr(jsonschema, "Draft202012Validator", None)
         if validator_cls is None:
@@ -178,13 +178,13 @@ class TestBundledSchema:
         if validator_cls is None:
             pytest.skip("installed jsonschema predates draft 2020-12")
         validator = validator_cls(load_schema())
-        validator.validate(benchguard.check(root=tree.root, assume_linux=True).record)
-        validator.validate(benchguard.check(assume_linux=False).record)
+        validator.validate(benchverdict.check(root=tree.root, assume_linux=True).record)
+        validator.validate(benchverdict.check(assume_linux=False).record)
 
 
 class TestLiveResults:
     def test_guard_record_is_the_envelope(self, tree):
-        with benchguard.guard(
+        with benchverdict.guard(
             root=tree.root, assume_linux=True, min_duration=0.0
         ) as g:
             pass
@@ -194,30 +194,30 @@ class TestLiveResults:
         assert validate_envelope(g.record) == []
 
     def test_check_result_envelope_validates(self, tree):
-        result = benchguard.check(root=tree.root, assume_linux=True)
+        result = benchverdict.check(root=tree.root, assume_linux=True)
         assert validate_envelope(result.to_envelope()) == []
         assert result.record["duration_s"] == 0.0
 
     def test_unsupported_envelope_validates(self):
-        result = benchguard.check(assume_linux=False)
+        result = benchverdict.check(assume_linux=False)
         assert result.verdict == "UNSUPPORTED"
         assert validate_envelope(result.to_envelope()) == []
 
     def test_unreadable_sources_land_in_the_envelope(self, empty_tree):
-        result = benchguard.check(root=empty_tree.root, assume_linux=True)
+        result = benchverdict.check(root=empty_tree.root, assume_linux=True)
         assert result.record["unreadable"]
         assert all(isinstance(u, str) and u for u in result.record["unreadable"])
 
     def test_label_is_recorded_under_measurement(self, tree):
-        result = benchguard.check(root=tree.root, assume_linux=True, label="decode-7B")
+        result = benchverdict.check(root=tree.root, assume_linux=True, label="decode-7B")
         assert result.record["measurement"]["label"] == "decode-7B"
 
     def test_to_json_round_trips(self, tree):
-        result = benchguard.check(root=tree.root, assume_linux=True)
+        result = benchverdict.check(root=tree.root, assume_linux=True)
         assert json.loads(result.to_json()) == result.record
 
     def test_every_emitted_envelope_on_a_sick_machine_validates(self, tree):
-        from benchguard.checks import Thresholds, evaluate
+        from benchverdict.checks import Thresholds, evaluate
 
         probe = probe_for(tree)
         before = probe.sample()

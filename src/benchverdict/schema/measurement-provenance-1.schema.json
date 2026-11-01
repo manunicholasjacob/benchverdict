@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/manunicholasjacob/benchguard/schema/measurement-provenance-1.schema.json",
+  "$id": "https://github.com/manunicholasjacob/benchverdict/schema/measurement-provenance-1.schema.json",
   "title": "measurement-provenance/1",
   "description": "A small outer envelope for a single performance or energy measurement, carrying a validity verdict, machine-readable reasons, a list of state sources that could not be read, and a tool-specific measurement payload. The envelope is shared by a family of measurement tools so that one parser reads all of them; only the contents of 'measurement' differ between tools.",
   "type": "object",
@@ -30,7 +30,7 @@
         "name": {
           "type": "string",
           "minLength": 1,
-          "description": "Distribution name of the emitting tool, for example benchguard."
+          "description": "Distribution name of the emitting tool, for example benchverdict."
         },
         "version": {
           "type": "string",

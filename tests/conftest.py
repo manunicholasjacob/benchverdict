@@ -1,9 +1,9 @@
 """Synthetic sysfs and procfs trees.
 
-benchguard reads Linux sysfs and procfs. The development machine for this
+benchverdict reads Linux sysfs and procfs. The development machine for this
 release is Windows, and CI runs on Windows too, so every behavioural test
 builds a fake tree in a temporary directory and points a
-:class:`benchguard.sources.Probe` at it with ``root=`` and
+:class:`benchverdict.sources.Probe` at it with ``root=`` and
 ``assume_linux=True``. That makes the Linux code paths testable on any host and
 keeps the suite deterministic: a real machine's throttle counters are not
 something a test can control.
@@ -179,7 +179,7 @@ def empty_tree(tmp_path) -> Tree:
 
 def probe_for(tree_obj: Tree, vcgencmd=None):
     """A Probe pinned to a synthetic tree, with the Linux paths forced on."""
-    from benchguard.sources import Probe
+    from benchverdict.sources import Probe
 
     return Probe(root=tree_obj.root, assume_linux=True, vcgencmd=vcgencmd, page_size=4096)
 

@@ -1,4 +1,4 @@
-"""Readers for the Linux sysfs and procfs sources benchguard samples.
+"""Readers for the Linux sysfs and procfs sources benchverdict samples.
 
 Design rules enforced here:
 
@@ -507,7 +507,7 @@ class Probe:
             return {
                 "supported": False,
                 "monotonic": time.monotonic(),
-                "unreadable": ["(all sources: benchguard reads Linux sysfs and procfs)"],
+                "unreadable": ["(all sources: benchverdict reads Linux sysfs and procfs)"],
             }
         sample: Dict[str, Any] = {
             "supported": True,

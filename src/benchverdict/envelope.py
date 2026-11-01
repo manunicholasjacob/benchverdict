@@ -2,11 +2,11 @@
 
 ``measurement-provenance/1`` is a small outer JSON contract shared by a family
 of measurement tools so that a consumer can read any of their outputs with one
-parser. benchguard owns the ``verdict`` and ``reasons`` concepts in that
+parser. benchverdict owns the ``verdict`` and ``reasons`` concepts in that
 contract; every tool-specific field lives under ``measurement``.
 
 The authoritative schema ships in this package as
-``benchguard/schema/measurement-provenance-1.schema.json`` and is reachable at
+``benchverdict/schema/measurement-provenance-1.schema.json`` and is reachable at
 runtime through :func:`schema_path` and :func:`load_schema`.
 """
 
@@ -71,7 +71,7 @@ def build_envelope(
     duration_s: float,
     unreadable: Optional[Iterable[str]] = None,
     taken_at_utc: Optional[str] = None,
-    tool_name: str = "benchguard",
+    tool_name: str = "benchverdict",
     tool_version: str = __version__,
 ) -> Dict[str, Any]:
     """Assemble a ``measurement-provenance/1`` envelope.

@@ -12,8 +12,8 @@ import re
 
 import pytest
 
-from benchguard import SCHEMA_ID, __version__
-from benchguard.checks import REASON_CODES, Severity, Verdict
+from benchverdict import SCHEMA_ID, __version__
+from benchverdict.checks import REASON_CODES, Severity, Verdict
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

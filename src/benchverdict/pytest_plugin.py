@@ -2,36 +2,36 @@
 
 A timing assertion that fails under a CPU quota tells you the wrong thing: it
 reports a slow function when what happened was that the kernel took the CPU
-away. This plugin wraps the call phase of a test in a :func:`benchguard.guard`
+away. This plugin wraps the call phase of a test in a :func:`benchverdict.guard`
 and, when the machine state invalidates the interval, fails the test with the
 reason codes attached, so the report says INVALID rather than slow.
 
 Enable it per test with the marker::
 
-    @pytest.mark.benchguard(min_duration=1.0, working_set_bytes=1_114_112_000)
+    @pytest.mark.benchverdict(min_duration=1.0, working_set_bytes=1_114_112_000)
     def test_decode_latency(benchmark):
         ...
 
-or for every test in a run with ``--benchguard-all``. Without either, the
+or for every test in a run with ``--benchverdict-all``. Without either, the
 plugin is inert.
 
 Options
 -------
-``--benchguard-all``
+``--benchverdict-all``
     Guard every test, not only marked ones.
-``--benchguard-strict``
+``--benchverdict-strict``
     Fail a test whose measurement is INVALID or UNKNOWN. Without it the
     verdict is reported as a warning and a terminal summary section.
-``--benchguard-fail-on-warnings``
-    With ``--benchguard-strict``, also fail on warning-severity reasons.
-``--benchguard-min-duration SECONDS``
+``--benchverdict-fail-on-warnings``
+    With ``--benchverdict-strict``, also fail on warning-severity reasons.
+``--benchverdict-min-duration SECONDS``
     Default minimum measured interval (default 1.0).
-``--benchguard-working-set-bytes BYTES``
+``--benchverdict-working-set-bytes BYTES``
     Default declared working set.
-``--benchguard-json FILE``
+``--benchverdict-json FILE``
     Write one measurement-provenance/1 envelope per guarded test to FILE as a
     JSON array.
-``--benchguard-root PATH``
+``--benchverdict-root PATH``
     Filesystem root for the state readers. For the plugin's own tests.
 """
 
@@ -46,7 +46,7 @@ import pytest
 from . import Guard, Verdict, guard
 from ._version import SCHEMA_ID, __version__
 
-MARKER = "benchguard"
+MARKER = "benchverdict"
 
 _MARKER_KEYS = (
     "min_duration",
@@ -62,32 +62,32 @@ _MARKER_KEYS = (
 )
 
 
-class BenchguardWarning(UserWarning):
+class BenchverdictWarning(UserWarning):
     """Issued when a guarded test was not valid and strict mode is off."""
 
 
 def pytest_addoption(parser: Any) -> None:
-    group = parser.getgroup("benchguard", "machine-state validity for benchmarks")
+    group = parser.getgroup("benchverdict", "machine-state validity for benchmarks")
     group.addoption(
-        "--benchguard-all",
+        "--benchverdict-all",
         action="store_true",
         default=False,
-        help="Guard every test, not only those marked with @pytest.mark.benchguard.",
+        help="Guard every test, not only those marked with @pytest.mark.benchverdict.",
     )
     group.addoption(
-        "--benchguard-strict",
+        "--benchverdict-strict",
         action="store_true",
         default=False,
         help="Fail a test whose measurement is INVALID or UNKNOWN.",
     )
     group.addoption(
-        "--benchguard-fail-on-warnings",
+        "--benchverdict-fail-on-warnings",
         action="store_true",
         default=False,
-        help="With --benchguard-strict, also fail on warning-severity reasons.",
+        help="With --benchverdict-strict, also fail on warning-severity reasons.",
     )
     group.addoption(
-        "--benchguard-min-duration",
+        "--benchverdict-min-duration",
         action="store",
         type=float,
         default=1.0,
@@ -95,7 +95,7 @@ def pytest_addoption(parser: Any) -> None:
         help="Default minimum measured interval below which the verdict is UNKNOWN.",
     )
     group.addoption(
-        "--benchguard-working-set-bytes",
+        "--benchverdict-working-set-bytes",
         action="store",
         type=int,
         default=None,
@@ -103,48 +103,48 @@ def pytest_addoption(parser: Any) -> None:
         help="Default declared resident working set.",
     )
     group.addoption(
-        "--benchguard-json",
+        "--benchverdict-json",
         action="store",
         default=None,
         metavar="FILE",
         help="Write one envelope per guarded test to FILE as a JSON array.",
     )
     group.addoption(
-        "--benchguard-root",
+        "--benchverdict-root",
         action="store",
         default="/",
         metavar="PATH",
         help="Filesystem root for the state readers (testing aid).",
     )
     group.addoption(
-        "--benchguard-assume-linux",
+        "--benchverdict-assume-linux",
         action="store_true",
         default=False,
         help="Force the Linux state readers on. Only useful together with "
-        "--benchguard-root, to exercise the readers against a synthetic tree.",
+        "--benchverdict-root, to exercise the readers against a synthetic tree.",
     )
 
 
 def pytest_configure(config: Any) -> None:
     config.addinivalue_line(
         "markers",
-        "benchguard(**thresholds): validate the machine state around this test and "
+        "benchverdict(**thresholds): validate the machine state around this test and "
         "report the measurement as INVALID rather than slow when the state "
-        "contaminated it. Accepts any benchguard.Thresholds field, plus strict=True.",
+        "contaminated it. Accepts any benchverdict.Thresholds field, plus strict=True.",
     )
-    config._benchguard_records = []  # type: ignore[attr-defined]
+    config._benchverdict_records = []  # type: ignore[attr-defined]
 
 
 def _options(config: Any, marker: Optional[Any]) -> Dict[str, Any]:
     opts: Dict[str, Any] = {
-        "min_duration": config.getoption("--benchguard-min-duration"),
-        "working_set_bytes": config.getoption("--benchguard-working-set-bytes"),
-        "root": config.getoption("--benchguard-root"),
+        "min_duration": config.getoption("--benchverdict-min-duration"),
+        "working_set_bytes": config.getoption("--benchverdict-working-set-bytes"),
+        "root": config.getoption("--benchverdict-root"),
     }
-    if config.getoption("--benchguard-assume-linux"):
+    if config.getoption("--benchverdict-assume-linux"):
         opts["assume_linux"] = True
-    strict = bool(config.getoption("--benchguard-strict"))
-    fail_on_warnings = bool(config.getoption("--benchguard-fail-on-warnings"))
+    strict = bool(config.getoption("--benchverdict-strict"))
+    fail_on_warnings = bool(config.getoption("--benchverdict-fail-on-warnings"))
     if marker is not None:
         for key, value in (marker.kwargs or {}).items():
             if key == "strict":
@@ -155,7 +155,7 @@ def _options(config: Any, marker: Optional[Any]) -> Dict[str, Any]:
                 opts[key] = value
             else:
                 raise pytest.UsageError(
-                    "unknown @pytest.mark.benchguard keyword %r. Valid: %s, strict, "
+                    "unknown @pytest.mark.benchverdict keyword %r. Valid: %s, strict, "
                     "fail_on_warnings, root, assume_linux, vcgencmd, page_size"
                     % (key, ", ".join(_MARKER_KEYS))
                 )
@@ -165,7 +165,7 @@ def _options(config: Any, marker: Optional[Any]) -> Dict[str, Any]:
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_call(item: Any) -> Any:
     marker = item.get_closest_marker(MARKER)
-    if marker is None and not item.config.getoption("--benchguard-all"):
+    if marker is None and not item.config.getoption("--benchverdict-all"):
         yield
         return
 
@@ -176,10 +176,10 @@ def pytest_runtest_call(item: Any) -> Any:
         outcome = yield
 
     envelope = g.to_envelope()
-    item.config._benchguard_records.append(envelope)  # type: ignore[attr-defined]
-    item.user_properties.append(("benchguard_verdict", g.verdict))
-    item.user_properties.append(("benchguard_codes", ",".join(g.codes)))
-    item.user_properties.append(("benchguard_envelope", json.dumps(envelope)))
+    item.config._benchverdict_records.append(envelope)  # type: ignore[attr-defined]
+    item.user_properties.append(("benchverdict_verdict", g.verdict))
+    item.user_properties.append(("benchverdict_codes", ",".join(g.codes)))
+    item.user_properties.append(("benchverdict_envelope", json.dumps(envelope)))
 
     body_failed = outcome.excinfo is not None
 
@@ -190,8 +190,8 @@ def pytest_runtest_call(item: Any) -> Any:
         if g.verdict == Verdict.INVALID:
             item.add_report_section(
                 "call",
-                "benchguard",
-                "This test failed on a machine benchguard judged INVALID, so the "
+                "benchverdict",
+                "This test failed on a machine benchverdict judged INVALID, so the "
                 "failure may not be about the code under test.\n" + g.summary(),
             )
         return
@@ -205,23 +205,23 @@ def pytest_runtest_call(item: Any) -> Any:
     )
     if should_fail:
         pytest.fail(
-            "benchguard: measurement %s, not merely slow.\n%s" % (g.verdict, g.summary()),
+            "benchverdict: measurement %s, not merely slow.\n%s" % (g.verdict, g.summary()),
             pytrace=False,
         )
     elif g.verdict != Verdict.PASS or g.warnings:
-        warnings.warn(BenchguardWarning(g.summary()), stacklevel=1)
-        item.add_report_section("call", "benchguard", g.summary())
+        warnings.warn(BenchverdictWarning(g.summary()), stacklevel=1)
+        item.add_report_section("call", "benchverdict", g.summary())
 
 
 def pytest_terminal_summary(terminalreporter: Any, exitstatus: int = 0, config: Any = None) -> None:
     cfg = config if config is not None else getattr(terminalreporter, "config", None)
-    records: List[Dict[str, Any]] = list(getattr(cfg, "_benchguard_records", []) or [])
+    records: List[Dict[str, Any]] = list(getattr(cfg, "_benchverdict_records", []) or [])
     if not records:
         return
     counts: Dict[str, int] = {}
     for rec in records:
         counts[rec["verdict"]] = counts.get(rec["verdict"], 0) + 1
-    terminalreporter.write_sep("=", "benchguard %s (%s)" % (__version__, SCHEMA_ID))
+    terminalreporter.write_sep("=", "benchverdict %s (%s)" % (__version__, SCHEMA_ID))
     terminalreporter.write_line(
         "measurements judged: "
         + ", ".join("%s=%d" % (k, counts[k]) for k in sorted(counts))
@@ -236,7 +236,7 @@ def pytest_terminal_summary(terminalreporter: Any, exitstatus: int = 0, config: 
                 "      [%s] %s" % (reason["severity"], reason["code"])
             )
     if cfg is not None:
-        path = cfg.getoption("--benchguard-json", default=None)
+        path = cfg.getoption("--benchverdict-json", default=None)
         if path:
             with open(path, "w", encoding="utf-8") as fh:
                 json.dump(records, fh, indent=2)

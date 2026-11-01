@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from conftest import fake_vcgencmd, probe_for
 
-from benchguard.sources import Reader, _parse_cpu_list
+from benchverdict.sources import Reader, _parse_cpu_list
 
 
 class TestReader:
@@ -230,7 +230,7 @@ class TestAffinity:
 
 class TestUnsupportedAndEmpty:
     def test_non_linux_short_circuits(self, tree):
-        from benchguard.sources import Probe
+        from benchverdict.sources import Probe
 
         sample = Probe(root=tree.root, assume_linux=False).sample()
         assert sample["supported"] is False

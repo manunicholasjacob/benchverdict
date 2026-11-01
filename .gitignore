@@ -18,8 +18,8 @@ htmlcov/
 venv/
 env/
 
-# benchguard's own output
-benchguard.json
+# benchverdict's own output
+benchverdict.json
 provenance.json
 envelope.json
 schema.json

@@ -1,32 +1,32 @@
-"""benchguard: decide whether a performance measurement was valid.
+"""benchverdict: decide whether a performance measurement was valid.
 
-benchguard samples the machine *around* a measurement and returns a verdict
+benchverdict samples the machine *around* a measurement and returns a verdict
 with a documented reason, plus a provenance record of the conditions the number
 was taken under. It is a precheck and a postcheck on the machine, not a
 comparison of results.
 
 Public API, stable within 0.x minor releases and within 1.x:
 
-    benchguard.guard(...)         context manager, verdict over an interval
-    benchguard.guarded(...)       the same thing as a decorator
-    benchguard.check(...)         point-in-time machine state read
-    benchguard.Guard              what guard() yields
-    benchguard.CheckResult        what check() returns
-    benchguard.Verdict            PASS / INVALID / UNSUPPORTED / UNKNOWN
-    benchguard.Severity           invalidating / warning / info
-    benchguard.Reason             code + severity + detail
-    benchguard.Thresholds         every tunable with its default
-    benchguard.REASON_CODES       the whole reason vocabulary
-    benchguard.InvalidMeasurement raised by strict mode
-    benchguard.SCHEMA_ID          "measurement-provenance/1"
-    benchguard.schema_path()      path to the bundled JSON Schema
-    benchguard.build_envelope()   assemble an envelope by hand
-    benchguard.validate_envelope() dependency-free envelope check
+    benchverdict.guard(...)         context manager, verdict over an interval
+    benchverdict.guarded(...)       the same thing as a decorator
+    benchverdict.check(...)         point-in-time machine state read
+    benchverdict.Guard              what guard() yields
+    benchverdict.CheckResult        what check() returns
+    benchverdict.Verdict            PASS / INVALID / UNSUPPORTED / UNKNOWN
+    benchverdict.Severity           invalidating / warning / info
+    benchverdict.Reason             code + severity + detail
+    benchverdict.Thresholds         every tunable with its default
+    benchverdict.REASON_CODES       the whole reason vocabulary
+    benchverdict.InvalidMeasurement raised by strict mode
+    benchverdict.SCHEMA_ID          "measurement-provenance/1"
+    benchverdict.schema_path()      path to the bundled JSON Schema
+    benchverdict.build_envelope()   assemble an envelope by hand
+    benchverdict.validate_envelope() dependency-free envelope check
 
 Example
 -------
->>> import benchguard
->>> with benchguard.guard(min_duration=1.0) as g:   # doctest: +SKIP
+>>> import benchverdict
+>>> with benchverdict.guard(min_duration=1.0) as g:   # doctest: +SKIP
 ...     run_the_benchmark()
 >>> g.verdict                                        # doctest: +SKIP
 'PASS'
@@ -169,7 +169,7 @@ class _ResultBase:
     def ok(self) -> bool:
         """True when the verdict is PASS or UNSUPPORTED.
 
-        UNSUPPORTED counts as ok on purpose: benchguard must not fail a job for
+        UNSUPPORTED counts as ok on purpose: benchverdict must not fail a job for
         running on a platform it cannot read.
         """
         return self.verdict in (Verdict.PASS, Verdict.UNSUPPORTED)
@@ -192,7 +192,7 @@ class _ResultBase:
 
     def summary(self) -> str:
         """One line per reason, prefixed by the verdict."""
-        head = "benchguard: %s (%.4f s)" % (self.verdict, self.duration_s)
+        head = "benchverdict: %s (%.4f s)" % (self.verdict, self.duration_s)
         if not self.reasons:
             return head + "\n  no findings"
         return "\n".join([head] + ["  " + str(r) for r in self.reasons])
@@ -200,7 +200,7 @@ class _ResultBase:
     def raise_if_invalid(self, fail_on_warnings: bool = False) -> None:
         """Raise :class:`InvalidMeasurement` when this result should fail a job.
 
-        INVALID always raises. UNKNOWN raises, because benchguard could not
+        INVALID always raises. UNKNOWN raises, because benchverdict could not
         establish validity and a silent pass would be a false assurance.
         UNSUPPORTED never raises. Warnings raise only when asked.
         """
@@ -276,7 +276,7 @@ class Guard(_ResultBase):
         """``high``, ``low`` or ``unknown``.
 
         ``low`` means the measured interval was shorter than ``min_duration``,
-        so a PASS would not have been well founded. benchguard reports UNKNOWN
+        so a PASS would not have been well founded. benchverdict reports UNKNOWN
         in that case instead of a confident verdict.
         """
         if not self.record:
@@ -285,7 +285,7 @@ class Guard(_ResultBase):
 
     def __enter__(self) -> "Guard":
         if self._entered:
-            raise RuntimeError("a benchguard Guard cannot be re-entered")
+            raise RuntimeError("a benchverdict Guard cannot be re-entered")
         self._entered = True
         self.before = self._probe.sample()
         self._t0 = time.perf_counter()
@@ -336,7 +336,7 @@ def guard(
     label:
         Free-text name recorded in the provenance under ``measurement.label``.
     root, assume_linux, vcgencmd, page_size:
-        Passed to :class:`benchguard.sources.Probe`. ``root`` exists so the
+        Passed to :class:`benchverdict.sources.Probe`. ``root`` exists so the
         library can be tested against a synthetic sysfs tree; production callers
         leave it alone.
     **threshold_kwargs:
@@ -348,8 +348,8 @@ def guard(
 
     Examples
     --------
-    >>> import benchguard
-    >>> with benchguard.guard(min_duration=1.0,
+    >>> import benchverdict
+    >>> with benchverdict.guard(min_duration=1.0,
     ...                       working_set_bytes=1_114_112_000) as g:  # doctest: +SKIP
     ...     latency = run_model()
     >>> g.verdict, g.codes                                            # doctest: +SKIP
@@ -384,16 +384,16 @@ def guarded(
 ) -> Callable[[F], F]:
     """Decorator form of :func:`guard`.
 
-    The wrapped function gains a ``benchguard`` attribute holding the
+    The wrapped function gains a ``benchverdict`` attribute holding the
     :class:`Guard` from its most recent call, so a non-strict caller can inspect
     the verdict after the fact without changing the function's return value.
 
-    >>> import benchguard
-    >>> @benchguard.guarded(min_duration=1.0, strict=True)             # doctest: +SKIP
+    >>> import benchverdict
+    >>> @benchverdict.guarded(min_duration=1.0, strict=True)             # doctest: +SKIP
     ... def measure_decode():
     ...     return run_model()
     >>> measure_decode()                                               # doctest: +SKIP
-    >>> measure_decode.benchguard.verdict                              # doctest: +SKIP
+    >>> measure_decode.benchverdict.verdict                              # doctest: +SKIP
     'PASS'
     """
 
@@ -412,10 +412,10 @@ def guarded(
             )
             with g:
                 out = fn(*args, **kwargs)
-            wrapper.benchguard = g  # type: ignore[attr-defined]
+            wrapper.benchverdict = g  # type: ignore[attr-defined]
             return out
 
-        wrapper.benchguard = None  # type: ignore[attr-defined]
+        wrapper.benchverdict = None  # type: ignore[attr-defined]
         return wrapper  # type: ignore[return-value]
 
     return decorate
@@ -441,8 +441,8 @@ def check(
     it as a precheck before a long run, or to record the machine's
     configuration.
 
-    >>> import benchguard
-    >>> r = benchguard.check()
+    >>> import benchverdict
+    >>> r = benchverdict.check()
     >>> r.verdict in ('PASS', 'INVALID', 'UNSUPPORTED')
     True
     """
