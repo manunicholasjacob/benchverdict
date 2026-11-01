@@ -1,0 +1,123 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "benchguard"
+dynamic = ["version"]
+description = "Decide whether a performance measurement was valid, and say why it was not."
+readme = "README.md"
+requires-python = ">=3.9"
+# PEP 639 SPDX expression plus license-files. Needs setuptools >= 77, which
+# [build-system] above requires. Per PEP 639 there is deliberately no
+# "License :: OSI Approved" classifier alongside it.
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Manu Nicholas Jacob", email = "manunicholasjacob@gmail.com" },
+]
+maintainers = [
+    { name = "Manu Nicholas Jacob", email = "manunicholasjacob@gmail.com" },
+]
+keywords = [
+    "benchmark",
+    "performance",
+    "cgroup",
+    "throttling",
+    "ci",
+    "provenance",
+    "reproducibility",
+    "sysfs",
+    "measurement-validity",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Benchmark",
+    "Topic :: Software Development :: Testing",
+    "Framework :: Pytest",
+    "Typing :: Typed",
+]
+
+# Zero runtime dependencies, deliberately. benchguard decides whether a
+# measurement was valid, so it must be installable into the same environment as
+# the thing being measured without perturbing it, and it must import on a
+# machine where nothing third party is present. Everything it reads comes from
+# the standard library plus Linux sysfs and procfs.
+dependencies = []
+
+[project.optional-dependencies]
+pytest = ["pytest>=7.0"]
+# jsonschema is a test-only dependency: it proves the bundled schema and the
+# emitted envelopes agree. benchguard itself never imports it.
+dev = ["pytest>=7.0", "ruff>=0.5", "jsonschema>=4.18"]
+
+[project.urls]
+Homepage = "https://github.com/manunicholasjacob/benchguard"
+Source = "https://github.com/manunicholasjacob/benchguard"
+Issues = "https://github.com/manunicholasjacob/benchguard/issues"
+Changelog = "https://github.com/manunicholasjacob/benchguard/blob/main/CHANGELOG.md"
+
+[project.scripts]
+benchguard = "benchguard.cli:main"
+
+[project.entry-points.pytest11]
+benchguard = "benchguard.pytest_plugin"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.dynamic]
+version = { attr = "benchguard._version.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+benchguard = ["schema/*.json", "py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    "error",
+    # Interpreter and toolchain noise that says nothing about benchguard.
+    "default::DeprecationWarning:importlib._bootstrap",
+    "default::ImportWarning",
+    "default::ResourceWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    # The 3.9 floor is real, so the typing module spellings stay: explicit
+    # Dict/List/Optional read the same on every supported interpreter and stay
+    # correct in the places where an annotation is evaluated at runtime.
+    "UP006",
+    "UP035",
+    "UP037",
+    "UP045",
+    # Percent formatting throughout is a deliberate house style here, not an
+    # oversight: it keeps log and message construction lazy and uniform.
+    "UP031",
+    # Spelling the open mode out loud is intentional at the schema boundary.
+    "UP015",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests build deliberately odd states and read more clearly with long literals
+# than with wrapped helpers.
+"tests/*" = ["E501"]

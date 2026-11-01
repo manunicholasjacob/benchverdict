@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.9', '3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        shell: bash
+        run: python -m pip install -e ".[dev]"
+
+      - name: Test
+        shell: bash
+        run: python -m pytest -v
+
+      # shell: bash is set explicitly so the same script runs on windows-latest
+      # through Git Bash. benchguard check exits 0 on Windows because the
+      # verdict is UNSUPPORTED: benchguard reads Linux sysfs and procfs and
+      # refuses to guess anywhere else, so an unreadable platform must never
+      # fail a job.
+      - name: CLI smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          benchguard --version
+          benchguard codes
+          benchguard schema > schema.json
+          python -c "import json; json.load(open('schema.json', encoding='utf-8'))"
+          benchguard check --json > envelope.json
+          python <<'PY'
+          import json
+
+          import benchguard
+
+          with open("envelope.json", encoding="utf-8") as fh:
+              env = json.load(fh)
+          print("verdict:", env["verdict"])
+          problems = benchguard.validate_envelope(env)
+          for problem in problems:
+              print("envelope problem:", problem)
+          raise SystemExit(1 if problems else 0)
+          PY
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install ruff
+        run: python -m pip install "ruff>=0.5"
+
+      - name: ruff check
+        run: ruff check .
+
+      # Advisory only: the source was not formatted by ruff format, so a
+      # difference here is information, not a failure.
+      - name: ruff format (advisory)
+        continue-on-error: true
+        run: ruff format --check .
+
+  action:
+    name: composite action
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Exercises the action from this checkout, which is also the path that
+      # consumers hit before the package is on PyPI. strict is off on purpose:
+      # a shared GitHub runner is frequently throttled and that must not fail
+      # this repository's own CI.
+      - name: Run the local action
+        id: bg
+        uses: ./
+        with:
+          command: python -c "import time; time.sleep(1.5)"
+          strict: 'false'
+          min-duration: '1.0'
+          artifact-name: benchguard-provenance-ci
+
+      - name: Assert the action produced a verdict
+        shell: bash
+        env:
+          BG_VERDICT: ${{ steps.bg.outputs.verdict }}
+          BG_CODES: ${{ steps.bg.outputs.codes }}
+          BG_ENVELOPE: ${{ steps.bg.outputs.envelope-path }}
+          BG_EXIT: ${{ steps.bg.outputs.exit-code }}
+        run: |
+          set -euo pipefail
+          echo "verdict=${BG_VERDICT}"
+          echo "codes=${BG_CODES}"
+          echo "envelope-path=${BG_ENVELOPE}"
+          echo "exit-code=${BG_EXIT}"
+          if [ -z "${BG_VERDICT}" ]; then
+            echo "::error::the action produced no verdict output"
+            exit 1
+          fi
+          case "${BG_VERDICT}" in
+            PASS|INVALID|UNSUPPORTED|UNKNOWN) ;;
+            *) echo "::error::unexpected verdict ${BG_VERDICT}"; exit 1 ;;
+          esac
+          test -f "${BG_ENVELOPE}"
+
+  ascii:
+    name: ascii only
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # This repository is ASCII only by rule: no smart quotes, no en or em
+      # dashes, no non-breaking spaces, no emoji, no box drawing. Under LC_ALL=C
+      # the class [^ -~] is every byte outside 0x20 to 0x7E, so a match is a
+      # violation and a match must fail the job. git grep is used rather than
+      # plain grep so that every tracked file is covered, including ones with no
+      # extension such as LICENSE, with -I skipping anything binary.
+      - name: No non-ASCII bytes in any tracked file
+        shell: bash
+        run: |
+          set -uo pipefail
+          if LC_ALL=C git grep -I -n -e '[^ -~]' -- .; then
+            echo "::error::non-ASCII bytes found in the files listed above"
+            exit 1
+          fi
+          echo "all tracked files are pure ASCII"
+
+      # The same sweep the author runs locally, kept verbatim so the two cannot
+      # disagree about what is being checked.
+      - name: Local-equivalent sweep
+        shell: bash
+        run: |
+          LC_ALL=C grep -rn '[^ -~]' --include='*.py' --include='*.md' --include='*.yml' --include='*.toml' --include='*.cff' --include='*.json' --include='*.txt' . && exit 1 || exit 0

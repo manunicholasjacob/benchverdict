@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/manunicholasjacob/benchguard/schema/measurement-provenance-1.schema.json",
+  "title": "measurement-provenance/1",
+  "description": "A small outer envelope for a single performance or energy measurement, carrying a validity verdict, machine-readable reasons, a list of state sources that could not be read, and a tool-specific measurement payload. The envelope is shared by a family of measurement tools so that one parser reads all of them; only the contents of 'measurement' differ between tools.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "tool",
+    "taken_at_utc",
+    "duration_s",
+    "platform",
+    "verdict",
+    "reasons",
+    "unreadable",
+    "measurement"
+  ],
+  "properties": {
+    "schema": {
+      "description": "Envelope contract identifier. Consumers must check this before reading any other key.",
+      "const": "measurement-provenance/1"
+    },
+    "tool": {
+      "description": "Which tool produced this envelope, and at what version.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Distribution name of the emitting tool, for example benchguard."
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Version of the emitting tool, as a string."
+        }
+      }
+    },
+    "taken_at_utc": {
+      "description": "Wall-clock time the measurement ended, ISO 8601 in UTC with a Z suffix. Wall-clock time is recorded for correlation only; no duration is derived from it.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+    },
+    "duration_s": {
+      "description": "Measured interval in seconds, from a monotonic clock. Zero for a point-in-time read that makes no claim about an interval.",
+      "type": "number",
+      "minimum": 0
+    },
+    "platform": {
+      "description": "Enough of the host identity to tell two runs apart. Values come from the Python standard library and may be empty strings where the platform does not supply them.",
+      "type": "object",
+      "required": ["system", "release", "machine", "python"],
+      "properties": {
+        "system": {
+          "type": "string",
+          "description": "platform.system(), for example Linux, Windows, Darwin."
+        },
+        "release": {
+          "type": "string",
+          "description": "platform.release(), for example 6.6.51+rpt-rpi-2712."
+        },
+        "machine": {
+          "type": "string",
+          "description": "platform.machine(), for example x86_64, aarch64."
+        },
+        "python": {
+          "type": "string",
+          "description": "major.minor.micro of the interpreter that took the measurement."
+        }
+      }
+    },
+    "verdict": {
+      "description": "PASS: no invalidating condition found and the interval was long enough to say so. INVALID: at least one invalidating condition was observed. UNSUPPORTED: this platform exposes none of the sources the tool reads, so no verdict is offered. UNKNOWN: nothing invalidating was found but the evidence does not support a confident PASS, most often because the measured interval was too short.",
+      "type": "string",
+      "enum": ["PASS", "INVALID", "UNSUPPORTED", "UNKNOWN"]
+    },
+    "reasons": {
+      "description": "Every finding, machine-readable code first. An empty array means no findings at all, which is not the same as a PASS: read 'verdict' for that.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "severity", "detail"],
+        "properties": {
+          "code": {
+            "description": "Stable SCREAMING_SNAKE identifier. A code is never given a new meaning within a major version. Consumers should branch on this, never on 'detail'.",
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"
+          },
+          "severity": {
+            "description": "invalidating: drives the verdict to INVALID. warning: the number is less trustworthy or less comparable, but this is not proof of contamination. info: a recorded observation with no judgement attached.",
+            "type": "string",
+            "enum": ["invalidating", "warning", "info"]
+          },
+          "detail": {
+            "description": "One human sentence, including the measured numbers behind the code. Free text; its wording is not part of the contract.",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "unreadable": {
+      "description": "Each state source the tool could not read, so that a consumer can tell an absent signal from a clean one. A source listed here was not checked; its absence from 'reasons' is not evidence that it was fine.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "measurement": {
+      "description": "The tool-specific payload. Its shape is owned by the tool named in 'tool.name' and is not constrained by this schema. Consumers that read more than one tool must branch on tool.name before reading inside this object.",
+      "type": "object"
+    }
+  }
+}
