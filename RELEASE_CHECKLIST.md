@@ -1,14 +1,19 @@
 # Release checklist for benchguard 0.1.0
 
-Nothing in this file has been done. Every step below is a manual step for Manu.
-The agent that wrote the packaging files deliberately took no external action:
-no `git init`, no commit, no remote created, no push, no tag, no build, no
-upload, no Zenodo integration, no Marketplace listing, no network write of any
-kind. Treat this document as the to-do list, not as a record.
+Every step below is a manual step for Manu. Nothing here that touches anything
+outside this directory has been done: no remote created, no push, no tag, no
+PyPI upload, no Zenodo integration, no Marketplace listing, no network write of
+any kind. Treat this document as the to-do list, not as a record.
 
-State of the world as this file was written, 1 November 2026:
+Two things WERE done locally, because a local repository is not an external
+action: `git init -b main` and three commits (see `git log`). Nothing is pushed
+anywhere, because there is nowhere to push to.
 
-- The package is not on PyPI.
+State of the world as this file was last updated, 1 November 2026:
+
+- The package is not on PyPI. The wheel and sdist were built and `twine check`
+  passed, locally, into a temporary directory outside this tree. Nothing was
+  uploaded.
 - The GitHub repository does not exist.
 - There is no git tag, and no release.
 - There is no DOI.
@@ -121,7 +126,8 @@ field. Do it before the first release or not at all.
 
 ## 1. git init and the first commit
 
-This may already be done. Check first:
+This is already done: the repository exists on this machine with three commits
+on `main`, and `git status` is clean. Verify rather than redo:
 
 ```bash
 cd "C:/Users/manun/OneDrive/Documents/Claudecode/benchguard"
@@ -129,17 +135,27 @@ git rev-parse --is-inside-work-tree 2>/dev/null || echo "not a git repository ye
 git status --short
 ```
 
-If it is not a repository yet:
+```bash
+git log --oneline
+```
+
+The three commits are not signed off, because `git commit -s` was not used. If
+you want a DCO sign-off on the history before it is pushed anywhere, rewrite it
+now while it is still local:
 
 ```bash
 cd "C:/Users/manun/OneDrive/Documents/Claudecode/benchguard"
-git init -b main
-git add .
-git status --short
-git commit -s -m "benchguard 0.1.0: measurement validity guard, pytest plugin and composite Action"
+git rebase --signoff --root
+git log --format="%H %s%n%b" | head -20
 ```
 
-Keep the DCO sign-off (`-s`). Do not add a Co-Authored-By trailer.
+Do not add a Co-Authored-By trailer, and do not add a "Generated with" line.
+
+Note that `core.autocrlf` is set to `false` for this repository and
+`.gitattributes` pins `eol=lf`. Leave both alone: `action.yml` and
+`.github/workflows/ci.yml` carry bash heredocs, and a CRLF line ending inside
+one of those breaks the script on a Linux runner. A CR byte would also fail the
+repository's own ascii CI job, since 0x0D is outside 0x20 to 0x7E.
 
 ## 2. Create the GitHub repository
 
