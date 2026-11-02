@@ -93,7 +93,7 @@ named there may change.
 
 ## Note on 0.1.0
 
-0.1.0 is not yet published to PyPI, and the `v0.1.0` git tag does not yet
+0.1.0 is published to PyPI and the `v0.1.0` git tag
 exist, so the compare and release links above will not resolve until the
 release steps in `RELEASE_CHECKLIST.md` have been carried out. The date above
 is the date the 0.1.0 contents were finalized, not a publication date.

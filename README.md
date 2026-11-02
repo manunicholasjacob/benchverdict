@@ -1,5 +1,10 @@
 # benchverdict
 
+[![PyPI](https://img.shields.io/pypi/v/benchverdict)](https://pypi.org/project/benchverdict/)
+[![CI](https://github.com/manunicholasjacob/benchverdict/actions/workflows/ci.yml/badge.svg)](https://github.com/manunicholasjacob/benchverdict/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/pypi/pyversions/benchverdict)](https://pypi.org/project/benchverdict/)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 Decide whether a performance measurement was valid, and fail the job when it was not.
 
 benchverdict samples the machine *around* a measurement, as deltas rather than a
@@ -21,8 +26,8 @@ benchverdict: INVALID (2.0041 s)
     period (0.5 CPU equivalent). ...
 ```
 
-Status: version 0.1.0, not yet published to PyPI and not yet tagged. There are no
-users, no downloads and no citations to report.
+Status: version 0.1.0, released on PyPI and tagged `v0.1.0`. It is new: there are
+no dependents, no citations and no outside users to report yet.
 
 ## Why it exists
 
@@ -45,12 +50,16 @@ memory", it was "here is the fault counter delta that shows it did".
 
 ## Install
 
-Nothing is published yet, so install from a checkout:
+```sh
+pip install benchverdict
+```
+
+Or from a checkout, for development:
 
 ```sh
 git clone https://github.com/manunicholasjacob/benchverdict
 cd benchverdict
-python -m pip install -e .
+python -m pip install -e ".[dev]"
 ```
 
 Zero runtime dependencies. Python 3.9 or newer. The pytest plugin needs pytest,
